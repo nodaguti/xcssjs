@@ -5,6 +5,7 @@
  * @author ofk
  * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
+ * @version 2012/04/11 23:30 <side-or-corner>でtoをつけた時の挙動が誤っていたのを修正
  * @version 2012/04/11 22:30 linear-gradientのSVGへの変換を動くようにした
  * @version 2012/04/11 20:20 <side-or-corner>のうちbottom/right/left bottom/right top/right bottomと, 特定の<angle>の値が-webkit-gradientに変換できるようになった
  * @version 2011/09/09 16:30 -webkit-gradientをまともに動くようにした
@@ -1007,7 +1008,7 @@ vendorProperty('transition-timing-function');
 // Legacy Syntax: linear-gradient([ [ [ <angle> | [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
 // Legacy Syntax: linear-gradient([ [ [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
 // Legacy Webkit Syntax: -webkit-gradient(<type>, <point> [, <radius>]?, <point> [, <radius>]? [, <stop>]*);
-if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')) {
+if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')) {
 	
 	//-webkit-gradient
 	if (vendorFunction('background-image', '-webkit-gradient', 'linear,left top,left bottom,color-stop(0,#000),color-stop(1,#000)', true)) {
@@ -1018,7 +1019,15 @@ if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')
 			//--direction
 			
 			//format to legacy from syntax (without to)
-			args[0] = args[0].replace(/^\s*to\s+/, '');
+			if(args[0].match(/^\s*to\s+/, '')){
+				args[0] = args[0].replace(/^\s*to\s+/, '')
+								.replace('left', 'righ+')
+								.replace('right', 'left')
+								.replace('righ+', 'right')
+								.replace('top', 'bott0m')
+								.replace('bottom', 'top')
+								.replace('bott0m', 'bottom');
+			}
 			
 			//convert to webkit to() syntax
 			switch(args[0]){
@@ -1110,7 +1119,15 @@ if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')
 			var xml = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs>';
 			
 			//format to legacy from syntax (without to)
-			args[0] = args[0].replace(/^\s*to\s+/, '');
+			if(args[0].match(/^\s*to\s+/, '')){
+				args[0] = args[0].replace(/^\s*to\s+/, '')
+								.replace('left', 'righ+')
+								.replace('right', 'left')
+								.replace('righ+', 'right')
+								.replace('top', 'bott0m')
+								.replace('bottom', 'top')
+								.replace('bott0m', 'bottom');
+			}
 			
 			//save original
 			var _args = Array.prototype.concat(args);
