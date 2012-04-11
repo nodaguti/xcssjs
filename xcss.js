@@ -1072,11 +1072,14 @@ if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')
 					}
 					
 					//if arguments[0] is valid as <color> value, the first value of linear-gradient may be omitted.
-					if(venderValue('color', arguments[0], true)){
+					if(venderValue('color', arguments[0].split(' ')[0], true)){
 						args = [ 'linear', 'left top', 'left bottom' ];
 						arguments.unshift('');
 						break;
 					}
+					
+					//Unsupported syntax
+					return null;
 			}
 			
 			//--from()
