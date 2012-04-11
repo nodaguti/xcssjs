@@ -5,6 +5,7 @@
  * @author ofk
  * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
+ * @version 2012/04/11 20:20 <side-or-corner>のうちbottom/right/left bottom/right top/right bottomと, 特定の<angle>の値が-webkit-gradientに変換できるようになった
  * @version 2011/09/09 16:30 -webkit-gradientをまともに動くようにした
  * @version 2011/09/07 16:50 user-select, appearanceを追加
  * @version 2011-03-27
@@ -821,6 +822,7 @@ function vendorProperty(name, flag) {
 }
 
 // boolean vendorValueBase(target:object, name:string, value:string, args:string, flag:boolean = false)
+// flag:boolean - ベンダープリフィックス付きをテストしない場合trueを指定する
 function vendorValueBase(target, name, value, args, flag) {
 	var camelize_name = xcss.rules.camelize(name);
 	// 値の設定
@@ -848,11 +850,13 @@ function vendorValueBase(target, name, value, args, flag) {
 }
 
 // boolean vendorValue(name:string, value:string, flag:boolean = false)
+// flag:boolean - ベンダープリフィックス付きをテストしない場合trueを指定する
 function vendorValue(name, value, flag) {
 	return vendorValueBase(values, name, value, '', flag);
 }
 
 // boolean vendorFunction(name:string, func:string, args:string, flag:boolean = false)
+// flag:boolean - ベンダープリフィックス付きをテストしない場合trueを指定する
 function vendorFunction(name, func, args, flag) {
 	return vendorValueBase(funcs, name, func, '(' + args + ')', flag);
 }
@@ -998,44 +1002,122 @@ vendorProperty('transition-property');
 vendorProperty('transition-timing-function');
 
 //= linear-gradient
+// Up-to-date Syntax: linear-gradient([ [ [ <angle> | to [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
+// Legacy Syntax: linear-gradient([ [ [ <angle> | [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
+// Legacy Syntax: linear-gradient([ [ [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
+// Legacy Webkit Syntax: -webkit-gradient(<type>, <point> [, <radius>]?, <point> [, <radius>]? [, <stop>]*);
 if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')) {
+	
+	//-webkit-gradient
 	if (vendorFunction('background-image', '-webkit-gradient', 'linear,left top,left bottom,color-stop(0,#000),color-stop(1,#000)', true)) {
 		xcss.functions['linear-gradient'] = function () {
 			var args;
 			
-			//direction
+			//--direction
+			
+			//format to legacy from syntax (without to)
+			arguments[0] = arguments[0].replace(/^\s*to\s+/, '');
+			
+			//convert to webkit to() syntax
 			switch(arguments[0]){
-				case 'top': args = [ 'linear', 'left top', 'left bottom' ]; break;
-				case 'left top': args = [ 'linear', 'left top', 'right bottom' ]; break;
-				case 'left': args = [ 'linear', 'left top', 'right top' ]; break;
-				default: args = [ 'linear', 'left top', 'left bottom' ]; break;
+				case 'top':
+				case '270deg':
+				case '-90deg':
+					args = [ 'linear', 'left top', 'left bottom' ]; break;
+					
+				case 'bottom':
+				case '90deg':
+				case '-270deg':
+					args = [ 'linear', 'left bottom', 'left top' ]; break;
+					
+				case 'left':
+				case '360deg':
+				case '0deg':    // Actually, 0deg is not valid <angle> value.
+					args = [ 'linear', 'left center', 'right center' ]; break;
+					
+				case 'right':
+				case '180deg':
+				case '-180deg':
+					args = [ 'linear', 'right center', 'left center' ]; break;
+					
+				case 'left top':
+				case 'top left':
+				case '335deg':
+				case '-45deg':
+					args = [ 'linear', 'left top', 'right bottom' ]; break;
+					
+				case 'left bottom':
+				case 'bottom left':
+				case '45deg':
+				case '-335deg':
+					args = [ 'linear', 'left bottom', 'right top' ]; break;
+					
+				case 'right top':
+				case 'top right':
+				case '225deg':
+				case '-135deg':
+					args = [ 'linear', 'right top', 'left bottom' ]; break;
+					
+				case 'right bottom':
+				case 'bottom right':
+				case '135deg':
+				case '-225deg':
+					args = [ 'linear', 'right bottom', 'left top' ]; break;
+				
+				default:
+				
+					//the other <angle> values are not supported.
+					if(/^\d+(deg|grad|rad|turn)$/.test(arguments[0])){
+						args = [ 'linear', 'left top', 'left bottom' ]; break;
+					}
+					
+					//if arguments[0] is valid as <color> value, the first value of linear-gradient may be omitted.
+					if(venderValue('color', arguments[0], true)){
+						args = [ 'linear', 'left top', 'left bottom' ];
+						arguments.unshift('');
+						break;
+					}
 			}
 			
-			//from
+			//--from()
 			args.push('from(' + arguments[1] + ')');
 			
-			//color-step
+			//--color-step()
 			for (var i = 2, iz = arguments.length-1; i < iz; ++i) {
 				var m = /^(.*?)\s+(?:([\d\.]+)%|([0\.]+))$/.exec(arguments[i]);
 				if (!m) continue;
 				args.push('color-stop(' + Math.min(Math.max(0, parseFloat(m[3] || m[2]) / 100), 1) + ',' + m[1] + ')');
 			}
 			
-			//to
+			//--to()
 			args.push('to(' + arguments[arguments.length-1] + ')');
 
 			return '-webkit-gradient(' + args.join(',') + ')';
 		};
 	}
 	else if (window.atob && window.btoa && vendorFunction('background-image', 'url', '"data:image/svg+xml;base64,' + btoa('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs><linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient"><stop offset="0%" style="stop-color:rgba(255,255,255,0.5);"/><stop offset="100%" style="stop-color:rgba(255,255,255,0);"/></linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%"/></svg>') + '"', true)) {
+	
+		console.log("SVG mode");
+	
 		xcss.functions['linear-gradient'] = function () {
+			console.log("create svg");
+		
+			//start
 			var xml = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs><linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
+			
+			//stop
 			for (var i = 0, iz = arguments.length; i < iz; ++i) {
 				var m = /^(.*?)\s+([\d\.]+%|[0\.]+)$/.exec(arguments[i]);
 				if (!m) return null;
+				
 				xml += '<stop offset="' + m[2] + '" style="stop-color:' + m[1] + ';"/>';
 			}
+			
+			//end
 			xml += '</linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%"/></svg>';
+			
+			console.log(xml);
+			
 			return 'url("data:image/svg+xml;base64,' + btoa(xml) + '")';
 		};
 	}
