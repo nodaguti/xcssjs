@@ -3,7 +3,10 @@
  * http://github.com/ofk/xcss/
  *
  * @author ofk
+ * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
+ * @version 2011/09/09 16:30 -webkit-gradientをまともに動くようにした
+ * @version 2011/09/07 16:50 user-select, appearanceを追加
  * @version 2011-03-27
  */
 
@@ -962,6 +965,8 @@ vendorProperty('outline-style');
 vendorProperty('outline-width');
 vendorProperty('resize');
 vendorProperty('text-overflow');
+vendorProperty('user-select');
+vendorProperty('appearance');
 
 //= transform
 vendorProperty('transform');
@@ -996,12 +1001,29 @@ vendorProperty('transition-timing-function');
 if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')) {
 	if (vendorFunction('background-image', '-webkit-gradient', 'linear,left top,left bottom,color-stop(0,#000),color-stop(1,#000)', true)) {
 		xcss.functions['linear-gradient'] = function () {
-			var args = [ 'linear', 'left top', 'left bottom' ];
-			for (var i = 0, iz = arguments.length; i < iz; ++i) {
+			var args;
+			
+			//direction
+			switch(arguments[0]){
+				case 'top': args = [ 'linear', 'left top', 'left bottom' ]; break;
+				case 'left top': args = [ 'linear', 'left top', 'right bottom' ]; break;
+				case 'left': args = [ 'linear', 'left top', 'right top' ]; break;
+				default: args = [ 'linear', 'left top', 'left bottom' ]; break;
+			}
+			
+			//from
+			args.push('from(' + arguments[1] + ')');
+			
+			//color-step
+			for (var i = 2, iz = arguments.length-1; i < iz; ++i) {
 				var m = /^(.*?)\s+(?:([\d\.]+)%|([0\.]+))$/.exec(arguments[i]);
-				if (!m) return null;
+				if (!m) continue;
 				args.push('color-stop(' + Math.min(Math.max(0, parseFloat(m[3] || m[2]) / 100), 1) + ',' + m[1] + ')');
 			}
+			
+			//to
+			args.push('to(' + arguments[arguments.length-1] + ')');
+
 			return '-webkit-gradient(' + args.join(',') + ')';
 		};
 	}
