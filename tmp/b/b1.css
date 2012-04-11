@@ -4,5 +4,6 @@
 
 .b1 {
 	padding: 30px;
-	background-image: linear-gradient( left, blue 0%, skyblue 100% );
+	background-image: linear-gradient(red, orange, yellow);
+	color: white;
 }
