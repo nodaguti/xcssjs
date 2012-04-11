@@ -5,6 +5,7 @@
  * @author ofk
  * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
+ * @version 2012/04/11 22:30 linear-gradientのSVGへの変換を動くようにした
  * @version 2012/04/11 20:20 <side-or-corner>のうちbottom/right/left bottom/right top/right bottomと, 特定の<angle>の値が-webkit-gradientに変換できるようになった
  * @version 2011/09/09 16:30 -webkit-gradientをまともに動くようにした
  * @version 2011/09/07 16:50 user-select, appearanceを追加
@@ -1011,70 +1012,72 @@ if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')
 	//-webkit-gradient
 	if (vendorFunction('background-image', '-webkit-gradient', 'linear,left top,left bottom,color-stop(0,#000),color-stop(1,#000)', true)) {
 		xcss.functions['linear-gradient'] = function () {
-			var args;
+			var args = Array.prototype.slice.call(arguments);
+			var cssArgs;
 			
 			//--direction
 			
 			//format to legacy from syntax (without to)
-			arguments[0] = arguments[0].replace(/^\s*to\s+/, '');
+			args[0] = args[0].replace(/^\s*to\s+/, '');
 			
 			//convert to webkit to() syntax
-			switch(arguments[0]){
+			switch(args[0]){
 				case 'top':
 				case '270deg':
 				case '-90deg':
-					args = [ 'linear', 'left top', 'left bottom' ]; break;
+					cssArgs = [ 'linear', 'left top', 'left bottom' ]; break;
 					
 				case 'bottom':
 				case '90deg':
 				case '-270deg':
-					args = [ 'linear', 'left bottom', 'left top' ]; break;
+					cssArgs = [ 'linear', 'left bottom', 'left top' ]; break;
 					
 				case 'left':
 				case '360deg':
 				case '0deg':    // Actually, 0deg is not valid <angle> value.
-					args = [ 'linear', 'left center', 'right center' ]; break;
+					cssArgs = [ 'linear', 'left center', 'right center' ]; break;
 					
 				case 'right':
 				case '180deg':
 				case '-180deg':
-					args = [ 'linear', 'right center', 'left center' ]; break;
+					cssArgs = [ 'linear', 'right center', 'left center' ]; break;
 					
 				case 'left top':
 				case 'top left':
 				case '335deg':
 				case '-45deg':
-					args = [ 'linear', 'left top', 'right bottom' ]; break;
+					cssArgs = [ 'linear', 'left top', 'right bottom' ]; break;
 					
 				case 'left bottom':
 				case 'bottom left':
 				case '45deg':
 				case '-335deg':
-					args = [ 'linear', 'left bottom', 'right top' ]; break;
+					cssArgs = [ 'linear', 'left bottom', 'right top' ]; break;
 					
 				case 'right top':
 				case 'top right':
 				case '225deg':
 				case '-135deg':
-					args = [ 'linear', 'right top', 'left bottom' ]; break;
+					cssArgs = [ 'linear', 'right top', 'left bottom' ]; break;
 					
 				case 'right bottom':
 				case 'bottom right':
 				case '135deg':
 				case '-225deg':
-					args = [ 'linear', 'right bottom', 'left top' ]; break;
+					cssArgs = [ 'linear', 'right bottom', 'left top' ]; break;
 				
 				default:
 				
 					//the other <angle> values are not supported.
-					if(/^\d+(deg|grad|rad|turn)$/.test(arguments[0])){
-						args = [ 'linear', 'left top', 'left bottom' ]; break;
+					if(/^\d+(deg|grad|rad|turn)$/.test(args[0])){
+						cssArgs = [ 'linear', 'left top', 'left bottom' ]; break;
 					}
 					
-					//if arguments[0] is valid as <color> value, the first value of linear-gradient may be omitted.
-					if(venderValue('color', arguments[0].split(' ')[0], true)){
-						args = [ 'linear', 'left top', 'left bottom' ];
-						arguments.unshift('');
+					//if args[0] is valid as <color> value, the first value of linear-gradient may be omitted.
+//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //なぜか動かない
+					if(! /[\d\.]+%/.test(args[0])){
+						cssArgs = [ 'linear', 'left top', 'left bottom' ];
+						args.unshift('');
 						break;
 					}
 					
@@ -1083,43 +1086,93 @@ if (!vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')
 			}
 			
 			//--from()
-			args.push('from(' + arguments[1] + ')');
+			cssArgs.push('from(' + args[1] + ')');
 			
 			//--color-step()
-			for (var i = 2, iz = arguments.length-1; i < iz; ++i) {
-				var m = /^(.*?)\s+(?:([\d\.]+)%|([0\.]+))$/.exec(arguments[i]);
+			for (var i = 2, iz = args.length-1; i < iz; ++i) {
+				var m = /^(.*?)\s+(?:([\d\.]+)%|([0\.]+))$/.exec(args[i]);
 				if (!m) continue;
-				args.push('color-stop(' + Math.min(Math.max(0, parseFloat(m[3] || m[2]) / 100), 1) + ',' + m[1] + ')');
+				cssArgs.push('color-stop(' + Math.min(Math.max(0, parseFloat(m[3] || m[2]) / 100), 1) + ',' + m[1] + ')');
 			}
 			
 			//--to()
-			args.push('to(' + arguments[arguments.length-1] + ')');
+			cssArgs.push('to(' + args[args.length-1] + ')');
 
-			return '-webkit-gradient(' + args.join(',') + ')';
+			return '-webkit-gradient(' + cssArgs.join(',') + ')';
 		};
 	}
 	else if (window.atob && window.btoa && vendorFunction('background-image', 'url', '"data:image/svg+xml;base64,' + btoa('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs><linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient"><stop offset="0%" style="stop-color:rgba(255,255,255,0.5);"/><stop offset="100%" style="stop-color:rgba(255,255,255,0);"/></linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%"/></svg>') + '"', true)) {
-	
-		console.log("SVG mode");
-	
+
 		xcss.functions['linear-gradient'] = function () {
-			console.log("create svg");
-		
-			//start
-			var xml = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs><linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
+			var args = Array.prototype.slice.call(arguments);
 			
-			//stop
-			for (var i = 0, iz = arguments.length; i < iz; ++i) {
-				var m = /^(.*?)\s+([\d\.]+%|[0\.]+)$/.exec(arguments[i]);
-				if (!m) return null;
-				
-				xml += '<stop offset="' + m[2] + '" style="stop-color:' + m[1] + ';"/>';
+			//svg prefix
+			var xml = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs>';
+			
+			//format to legacy from syntax (without to)
+			args[0] = args[0].replace(/^\s*to\s+/, '');
+			
+			//save original
+			var _args = Array.prototype.concat(args);
+			
+			//convert to <linearGradient> syntax
+			switch(args[0]){
+				case 'top':
+				case '270deg':
+				case '-90deg':
+					xml += '<linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
+					args.shift();
+					break;
+					
+				case 'bottom':
+				case '90deg':
+				case '-270deg':
+					xml += '<linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
+					args.reverse();
+					args.pop();
+					break;
+					
+				case 'left':
+				case '360deg':
+				case '0deg':    // Actually, 0deg is not valid <angle> value.
+					xml += '<linearGradient x1="0" y1="0" x2="100%" y2="0" id="gradient">';
+					args.shift();
+					break;
+					
+				case 'right':
+				case '180deg':
+				case '-180deg':
+					xml += '<linearGradient x1="0" y1="0" x2="100%" y2="0" id="gradient">';
+					args.reverse();
+					args.pop();
+					break;
+
+				default:
+					
+					//if arguments[0] is valid as <color> value, the first value of linear-gradient may be omitted.
+//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //なぜか動かない
+					if(! /[\d\.]+%/.test(args[0])){
+						xml += '<linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
+						_args.unshift('');
+						break;
+					}
+					
+					//Unsupported syntax
+					return null;
 			}
 			
-			//end
-			xml += '</linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%"/></svg>';
+			//stop
+			for (var i = 0, iz = args.length; i < iz; ++i) {
+				var color = args[i].replace(/\s*[\d\.]+%\s*/, '');
+				var offset = /[\d\.]+%/.exec(_args[i+1]);
+				
+				if(!offset) offset = [ Math.floor( (i * 100) / (args.length - 1) ) + '%' ];  //try to assign the equal position
+				
+				xml += '<stop offset="' + offset[0] + '" style="stop-color:' + color + '; stop-opacity: 1;" />';
+			}
 			
-			console.log(xml);
+			//svg suffix
+			xml += '</linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%" /></svg>';
 			
 			return 'url("data:image/svg+xml;base64,' + btoa(xml) + '")';
 		};
