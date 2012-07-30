@@ -5,7 +5,8 @@
  * @author ofk
  * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
- * @version 2012/04/11 23:30 <side-or-corner>でtoをつけた時の挙動が誤っていたのを修正
+ * @version 2012/07/30 15:00 "to syntax", "from syntax", <angle>の相互変換サポート
+ * @version 2012/04/11 23:30 <side-or-corner>でtoをつけた時の向きが逆だった修正
  * @version 2012/04/11 22:30 linear-gradientのSVGへの変換を動くようにした
  * @version 2012/04/11 20:20 <side-or-corner>のうちbottom/right/left bottom/right top/right bottomと, 特定の<angle>の値が-webkit-gradientに変換できるようになった
  * @version 2011/09/09 16:30 -webkit-gradientをまともに動くようにした
@@ -1008,9 +1009,96 @@ vendorProperty('transition-timing-function');
 // Legacy Syntax: linear-gradient([ [ [ <angle> | [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
 // Legacy Syntax: linear-gradient([ [ [top | bottom] || [left | right] ],]? <color-stop>[, <color-stop>]+);
 // Legacy Webkit Syntax: -webkit-gradient(<type>, <point> [, <radius>]?, <point> [, <radius>]? [, <stop>]*);
-if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #000 100%')) {
+
+//if supports "to syntax" without the vender prefix
+if (vendorFunction('background-image', 'linear-gradient', 'to top, #000 0%, %000 100%', true)) {
+	alert('full support for linear-gradient !');
+	xcss.functions['linear-gradient'] = function () {
+		var args = Array.prototype.slice.call(arguments);
 	
-	//-webkit-gradient
+		//convert from legacy "from syntax" to "to syntax"
+		if(/^(:?top|bottom|left|right|center|\s)+$/.test(args[0])){
+			args[0] = args[0].replace('left', 'righ+')
+							.replace('right', 'left')
+							.replace('righ+', 'right')
+							.replace('top', 'bott0m')
+							.replace('bottom', 'top')
+							.replace('bott0m', 'bottom');
+			args[0] = 'to ' + args[0];
+		}
+		
+		return 'linear-gradient(' + args.join(',') + ')';
+	};
+}
+
+//if supports legacy "from syntax"
+else if (vendorFunction('background-image', 'linear-gradient', 'top, #000 0%, #000 100%')) {
+	xcss.functions['linear-gradient'] = function () {
+		var args = Array.prototype.slice.call(arguments);
+	
+		//convert to legacy "from syntax" from "to syntax"
+		if(/^\s*to\s+/.test(args[0])){
+			args[0] = args[0].replace(/^\s*to\s+/, '')
+							.replace('left', 'righ+')
+							.replace('right', 'left')
+							.replace('righ+', 'right')
+							.replace('top', 'bott0m')
+							.replace('bottom', 'top')
+							.replace('bott0m', 'bottom');
+		}
+		
+		//if doesn't support <angle> as direction for gradient, 
+		//convert from <angle> to <side-or-corner>
+		if ( (!vendorFunction('background-image', 'linear-gradient', '90deg, #000 0%, #000 100%')) &&
+			/^\d+(deg|grad|rad|turn)$/.test(args[0])) {
+
+			switch(args[0]){
+				case '270deg':
+				case '-90deg':
+					args[0] = 'top'; break;
+		
+				case '90deg':
+				case '-270deg':
+					args[0] = 'bottom'; break;
+		
+				case '360deg':
+				case '0deg':    // Actually, 0deg is not a valid <angle> value.
+					args[0] = 'left'; break;
+		
+				case '180deg':
+				case '-180deg':
+					args[0] = 'right'; break;
+		
+				case '335deg':
+				case '-45deg':
+					args[0] = 'left top'; break;
+		
+				case '45deg':
+				case '-335deg':
+					args[0] = 'left bottom'; break;
+		
+				case '225deg':
+				case '-135deg':
+					args[0] = 'right top'; break;
+		
+				case '135deg':
+				case '-225deg':
+					args[0] = 'right bottom'; break;
+				
+				default:
+					//the other <angle> values are not supported.
+					args[0] = 'top';
+			}
+		}
+		
+		return vendorPrefix + 'linear-gradient(' + args.join(',') + ')';
+	};
+}
+
+//if doesn't support linear-gradient
+else {
+	
+	//if supports -webkit-gradient
 	if (vendorFunction('background-image', '-webkit-gradient', 'linear,left top,left bottom,color-stop(0,#000),color-stop(1,#000)', true)) {
 		xcss.functions['linear-gradient'] = function () {
 			var args = Array.prototype.slice.call(arguments);
@@ -1018,8 +1106,8 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 			
 			//--direction
 			
-			//format to legacy from syntax (without to)
-			if(args[0].match(/^\s*to\s+/, '')){
+			//convert to legacy "from syntax" from "to syntax"
+			if(/^\s*to\s+/.test(args[0])){
 				args[0] = args[0].replace(/^\s*to\s+/, '')
 								.replace('left', 'righ+')
 								.replace('right', 'left')
@@ -1043,7 +1131,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 					
 				case 'left':
 				case '360deg':
-				case '0deg':    // Actually, 0deg is not valid <angle> value.
+				case '0deg':    // Actually, 0deg is not a valid <angle> value.
 					cssArgs = [ 'linear', 'left center', 'right center' ]; break;
 					
 				case 'right':
@@ -1083,7 +1171,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 					}
 					
 					//if args[0] is valid as <color> value, the first value of linear-gradient may be omitted.
-//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //なぜか動かない
+//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //not work
 					if(! /[\d\.]+%/.test(args[0])){
 						cssArgs = [ 'linear', 'left top', 'left bottom' ];
 						args.unshift('');
@@ -1091,7 +1179,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 					}
 					
 					//Unsupported syntax
-					return null;
+					return '';
 			}
 			
 			//--from()
@@ -1110,6 +1198,8 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 			return '-webkit-gradient(' + cssArgs.join(',') + ')';
 		};
 	}
+	
+	//if supports SVG
 	else if (window.atob && window.btoa && vendorFunction('background-image', 'url', '"data:image/svg+xml;base64,' + btoa('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs><linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient"><stop offset="0%" style="stop-color:rgba(255,255,255,0.5);"/><stop offset="100%" style="stop-color:rgba(255,255,255,0);"/></linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%"/></svg>') + '"', true)) {
 
 		xcss.functions['linear-gradient'] = function () {
@@ -1118,8 +1208,8 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 			//svg prefix
 			var xml = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" version="1.0"><defs>';
 			
-			//format to legacy from syntax (without to)
-			if(args[0].match(/^\s*to\s+/, '')){
+			//convert to legacy "from syntax" from "to syntax"
+			if(/^\s*to\s+/.test(args[0])){
 				args[0] = args[0].replace(/^\s*to\s+/, '')
 								.replace('left', 'righ+')
 								.replace('right', 'left')
@@ -1129,7 +1219,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 								.replace('bott0m', 'bottom');
 			}
 			
-			//save original
+			//save the original arguments
 			var _args = Array.prototype.concat(args);
 			
 			//convert to <linearGradient> syntax
@@ -1151,7 +1241,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 					
 				case 'left':
 				case '360deg':
-				case '0deg':    // Actually, 0deg is not valid <angle> value.
+				case '0deg':    // Actually, 0deg is not a valid <angle> value.
 					xml += '<linearGradient x1="0" y1="0" x2="100%" y2="0" id="gradient">';
 					args.shift();
 					break;
@@ -1166,8 +1256,8 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 
 				default:
 					
-					//if arguments[0] is valid as <color> value, the first value of linear-gradient may be omitted.
-//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //なぜか動かない
+					//if arguments[0] is valid as <color> value, the first arg of linear-gradient may be omitted.
+//					if(vendorValue('color', args[0].replace(/\s*[\d\.]+%\s*/, ''), true)){        //not work
 					if(! /[\d\.]+%/.test(args[0])){
 						xml += '<linearGradient x1="0" y1="0" x2="0" y2="100%" id="gradient">';
 						_args.unshift('');
@@ -1175,7 +1265,7 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 					}
 					
 					//Unsupported syntax
-					return null;
+					return '';
 			}
 			
 			//stop
@@ -1191,9 +1281,11 @@ if (true || !vendorFunction('background-image', 'linear-gradient', '#000 0%, #00
 			//svg suffix
 			xml += '</linearGradient></defs><rect x="0" y="0" fill="url(#gradient)" width="100%" height="100%" /></svg>';
 			
-			return 'url("data:image/svg+xml;base64,' + btoa(xml) + '")';
+			return 'url("data:image/svg+xml;base64,' + window.btoa(xml) + '")';
 		};
 	}
+	
+	//if supports the filter property
 	else if (divStyle.filter != null) {
 		function to16(v) {
 			v = /%$/.test(v) ? parseFloat(v.slice(-1)) / 100 * 255 : parseFloat(v);
