@@ -5,6 +5,9 @@
  * @author ofk
  * @modified nodaguti
  * @license MIT ( http://www.opensource.org/licenses/mit-license.php )
+ * @version 2012/10/26 15:30 CSSの先頭が@ruleの時、スタイルを追加できない問題を修正
+ * @version 2012/10/26 15:00 xcssRulesRemoveのIE互換性を追加
+ * @version 2012/10/26 14:00 外部ドメインのCSSを読み込もうとするとセキュリティエラーになるのを回避
  * @version 2012/07/30 15:00 "to syntax", "from syntax", <angle>の相互変換サポート
  * @version 2012/04/11 23:30 <side-or-corner>でtoをつけた時の向きが逆だった修正
  * @version 2012/04/11 22:30 linear-gradientのSVGへの変換を動くようにした
@@ -211,8 +214,12 @@ function xcssCollect_(csss, sheets, base_url, safe_urls) {
 		}
 
 		// @import取得
-		var next_sheets = sheet.imports || sheet.cssRules;
-		if (next_sheets.length) {
+		var next_sheets;
+		try{
+			next_sheets = sheet.imports || sheet.cssRules;
+		}catch(e){}
+		
+		if (next_sheets && next_sheets.length) {
 			// IE8でURLが壊れる対策
 			var safe_urls = null;
 			if (IS_MSIE8) {
@@ -675,13 +682,22 @@ function xcssRulesDecamelize(str) {
 //= CSSルールの追加
 // int xcss.rules.add(selector:string, property:string, sheet:CSSStyleSheet, index:number = null)
 function xcssRulesAdd(selector, property, sheet, index) {
-	// W3C
-	if (sheet.insertRule) {
-		return sheet.insertRule(selector + '{' + property + '}', index == null ? sheet.cssRules.length : index);
+	//追加できそうなところまでインクリメントする
+	if(index != null){
+		for(;sheet.cssRules[index].type !== 1;index++); //CSSRule.STYLE_RULE
 	}
-	// IE
-	if (sheet.addRule) {
-		return sheet.addRule(selector, property, index == null ? sheet.rules.length : index);
+	
+	try{
+		// W3C
+		if (sheet.insertRule) {
+			return sheet.insertRule(selector + '{' + property + '}', index == null ? sheet.cssRules.length : index);
+		}
+		// IE
+		if (sheet.addRule) {
+			return sheet.addRule(selector, property, index == null ? sheet.rules.length : index);
+		}
+	}catch(e){
+		console.log(e, selector, property, sheet, index);
 	}
 
 	return null;
@@ -690,7 +706,14 @@ function xcssRulesAdd(selector, property, sheet, index) {
 //= CSSルールの削除
 // int xcss.rules.remove(sheet:CSSStyleSheet, index:number)
 function xcssRulesRemove(sheet, index) {
-	sheet.deleteRule(index);
+	//W3C
+	if(sheet.deleteRule){
+		return sheet.deleteRule(index);
+	}
+	//IE
+	if(sheet.removeRule){
+		return sheet.removeRule(index);
+	}
 }
 
 

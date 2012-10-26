@@ -1,14 +1,14 @@
 XCSSjs
 ======
 
-※引数の名前などは, https://developer.mozilla.org/en/CSS/-moz-linear-gradient に準拠しています.
+※linear-gradientの引数の名前などは, https://developer.mozilla.org/en/CSS/-moz-linear-gradient に準拠しています.
 
 What's the difference from the original one?
 -----
 
 * グラデーション（linear-gradient）のサポートの強化
  
-  * 過去のすべての文法をサポート. どの形式で書かれていても自動で変換します. （文法の詳細は[History of the syntax](https://developer.mozilla.org/en/CSS/-moz-linear-gradient#History_of_the_syntax)を参照）
+  * 過去のすべての文法をサポート. どの形式で書かれていても自動で変換します. （文法の詳細は History of the syntax (https://developer.mozilla.org/en/CSS/-moz-linear-gradient#History_of_the_syntax)を参照）
 
     * 以下の文法を実装しているブラウザーに対応しています. "to syntax", "from syntax", <angle>どれが使われていても, それぞれの文法に自動で変換します.
 
@@ -39,6 +39,12 @@ What's the difference from the original one?
 * 対応プロパティを追加
 
   * user-select, appearance プロパティに対応しました.
+  
+* オリジナルのバグを修正
+
+  * CSSの先頭が@ruleの時、スタイルを追加できない問題を修正
+  * xcssRulesRemoveのIE互換性を追加
+  * 外部ドメインのCSSを読み込もうとするとセキュリティエラーになるのを回避
   
 ToDo
 -----
